@@ -1,7 +1,9 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, 
+  // useFrame 
+} from "@react-three/fiber";
 import { Group, Box3, Vector3 } from "three";
 import { OrbitControls, useGLTF, Environment } from "@react-three/drei";
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 function RubikModel(props: any) {
   const { scene } = useGLTF("./rubiks_cube4.glb") as { scene: Group };
@@ -29,13 +31,13 @@ function RubikModel(props: any) {
   }, [scene]);
 
   // Rotate the group (not the scene) to ensure rotation around [0, 0, 0]
-  useFrame((state, delta) => {
-    if (groupRef.current) {
+  // useFrame((state, delta) => {
+  //   if (groupRef.current) {
       // groupRef.current.rotation.x += delta * 1; // Fan-like rotation on Y-axis
       // groupRef.current.rotation.y += delta * 1; // Fan-like rotation on Y-axis
       // groupRef.current.rotation.z += delta * 1; // Fan-like rotation on Y-axis
-    }
-  });
+  //   }
+  // });
 
   return (
     <group ref={groupRef} {...props}>
