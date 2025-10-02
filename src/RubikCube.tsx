@@ -14,7 +14,7 @@ type RubikModelRef = {
 };
 
 function RubikModel(props: any, ref: React.Ref<RubikModelRef>) {
-  const { scene } = useGLTF("./rubiks_cube4.glb") as { scene: Group };
+  const { scene } = useGLTF(props.path) as { scene: Group };
   const groupRef = useRef<Group>(null);
 
   React.useImperativeHandle(ref, () => ({
@@ -65,20 +65,49 @@ function RubikModel(props: any, ref: React.Ref<RubikModelRef>) {
 
 const ForwardedRubikModel = React.forwardRef<RubikModelRef, any>(RubikModel);
 
-useGLTF.preload("./rubiks_cube4.glb");
+useGLTF.preload("./blender/rubiks_cube_1.glb");
+useGLTF.preload("./blender/rubiks_cube_2.glb");
+useGLTF.preload("./blender/rubiks_cube_3.glb");
 
 export default function RubikCube() {
-  const cubeRef = useRef<RubikModelRef>(null);
-  const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });
+  const cubeRef1 = useRef<RubikModelRef>(null);
+  const cubeRef2 = useRef<RubikModelRef>(null);
+  const cubeRef3 = useRef<RubikModelRef>(null);
 
-  const handleInputChange = (axis: "x" | "y" | "z", value: string) => {
+  const [rotation1, setRotation1] = useState({ x: 0, y: 0, z: 0 });
+  const [rotation2, setRotation2] = useState({ x: 0, y: 0, z: 0 });
+  const [rotation3, setRotation3] = useState({ x: 0, y: 0, z: 0 });
+
+  const handleInputChange = (
+    cube: "cube1" | "cube2" | "cube3",
+    axis: "x" | "y" | "z",
+    value: string
+  ) => {
     const angleDeg = Number(value) || 0;
     const angleRad = (angleDeg * Math.PI) / 180;
-    if (cubeRef.current) {
-      if (axis === "x") cubeRef.current.rotateXByStep(angleRad);
-      if (axis === "y") cubeRef.current.rotateYByStep(angleRad);
-      if (axis === "z") cubeRef.current.rotateZByStep(angleRad);
-      setRotation(cubeRef.current.getRotation());
+
+    let ref: RubikModelRef | null = null;
+    switch (cube) {
+      case "cube1":
+        ref = cubeRef1.current;
+        break;
+      case "cube2":
+        ref = cubeRef2.current;
+        break;
+      case "cube3":
+        ref = cubeRef3.current;
+        break;
+    }
+
+    if (ref) {
+      if (axis === "x") ref.rotateXByStep(angleRad);
+      if (axis === "y") ref.rotateYByStep(angleRad);
+      if (axis === "z") ref.rotateZByStep(angleRad);
+
+      const updated = ref.getRotation();
+      if (cube === "cube1") setRotation1(updated);
+      else if (cube === "cube2") setRotation2(updated);
+      else setRotation3(updated);
     }
   };
 
@@ -86,39 +115,93 @@ export default function RubikCube() {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <Canvas
         camera={{ position: [30, 10, 10], fov: 50 }}
-        style={{ width: "30vh", height: "30vh", background: "#242424" }}
+        style={{ width: "60vh", height: "60vh", background: "#242424" }}
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1.5} />
 
-        <ForwardedRubikModel ref={cubeRef} scale={1.5} position={[0, 0, 0]} 
-        rotation={[(6*Math.PI)/180, (26*Math.PI)/180, (-10*Math.PI)/180]} 
+        {/* Cube 1 */}
+        <ForwardedRubikModel
+          ref={cubeRef1}
+          path="./blender/rubiks_cube_1.glb"
+          scale={1.5}
+          position={[0, 0, 0]}
+        />
+
+        {/* Cube 2 */}
+        <ForwardedRubikModel
+          ref={cubeRef2}
+          path="./blender/rubiks_cube_2.glb"
+          scale={1.5}
+          position={[-3, 0, 0]}
+        />
+
+        {/* Cube 3 */}
+        <ForwardedRubikModel
+          ref={cubeRef3}
+          path="./blender/rubiks_cube_3.glb"
+          scale={1.5}
+          position={[-6, 0, 0]}
         />
 
         <OrbitControls enableZoom />
         <Environment preset="sunset" />
       </Canvas>
 
-      {/* Manual Input Controls */}
-      <div style={{ marginTop: "15px", display: "flex", flexDirection: "column", gap: "10px" }}>
+      {/* Controls for Cube 1 */}
+      <div style={{ marginTop: "15px", padding: "10px", border: "1px solid #666", borderRadius: "8px" }}>
+        <h3 style={{ textAlign: "center", marginBottom: "10px" }}>Cube 1 Controls</h3>
         {(["x", "y", "z"] as const).map((axis) => (
-          <div key={axis} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div key={axis} style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "5px" }}>
             <label>{axis.toUpperCase()} (°):</label>
             <input
               type="number"
-              value={rotation[axis]}
-              onChange={(e) => handleInputChange(axis, e.target.value)}
+              value={rotation1[axis]}
+              onChange={(e) => handleInputChange("cube1", axis, e.target.value)}
               style={{ width: "80px" }}
             />
           </div>
         ))}
+        <p style={{ marginTop: "10px", textAlign: "center" }}>
+          Rotation → X: {rotation1.x.toFixed(1)}°, Y: {rotation1.y.toFixed(1)}°, Z: {rotation1.z.toFixed(1)}°
+        </p>
       </div>
 
-      {/* Current Rotation Output */}
-      <div style={{ marginTop: "15px", textAlign: "center" }}>
-        <p>
-          Current Rotation → X: {rotation.x.toFixed(1)}°, Y: {rotation.y.toFixed(1)}°, Z:{" "}
-          {rotation.z.toFixed(1)}°
+      {/* Controls for Cube 2 */}
+      <div style={{ marginTop: "15px", padding: "10px", border: "1px solid #666", borderRadius: "8px" }}>
+        <h3 style={{ textAlign: "center", marginBottom: "10px" }}>Cube 2 Controls</h3>
+        {(["x", "y", "z"] as const).map((axis) => (
+          <div key={axis} style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "5px" }}>
+            <label>{axis.toUpperCase()} (°):</label>
+            <input
+              type="number"
+              value={rotation2[axis]}
+              onChange={(e) => handleInputChange("cube2", axis, e.target.value)}
+              style={{ width: "80px" }}
+            />
+          </div>
+        ))}
+        <p style={{ marginTop: "10px", textAlign: "center" }}>
+          Rotation → X: {rotation2.x.toFixed(1)}°, Y: {rotation2.y.toFixed(1)}°, Z: {rotation2.z.toFixed(1)}°
+        </p>
+      </div>
+
+      {/* Controls for Cube 3 */}
+      <div style={{ marginTop: "15px", padding: "10px", border: "1px solid #666", borderRadius: "8px" }}>
+        <h3 style={{ textAlign: "center", marginBottom: "10px" }}>Cube 3 Controls</h3>
+        {(["x", "y", "z"] as const).map((axis) => (
+          <div key={axis} style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "5px" }}>
+            <label>{axis.toUpperCase()} (°):</label>
+            <input
+              type="number"
+              value={rotation3[axis]}
+              onChange={(e) => handleInputChange("cube3", axis, e.target.value)}
+              style={{ width: "80px" }}
+            />
+          </div>
+        ))}
+        <p style={{ marginTop: "10px", textAlign: "center" }}>
+          Rotation → X: {rotation3.x.toFixed(1)}°, Y: {rotation3.y.toFixed(1)}°, Z: {rotation3.z.toFixed(1)}°
         </p>
       </div>
     </div>
