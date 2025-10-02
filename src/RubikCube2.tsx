@@ -4,12 +4,6 @@ import { OrbitControls, useGLTF, Environment } from "@react-three/drei";
 import React, { useRef, useState, useEffect } from "react";
 
 type RubikModelRef = {
-  rotateXByStep: (angle?: number) => void;
-  rotateYByStep: (angle?: number) => void;
-  rotateZByStep: (angle?: number) => void;
-  rotateNegXByStep: (angle?: number) => void;
-  rotateNegYByStep: (angle?: number) => void;
-  rotateNegZByStep: (angle?: number) => void;
   getRotation: () => { x: number; y: number; z: number };
 };
 
@@ -18,24 +12,6 @@ function RubikModel(props: any, ref: React.Ref<RubikModelRef>) {
   const groupRef = useRef<Group>(null);
 
   React.useImperativeHandle(ref, () => ({
-    rotateXByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.x = angle;
-    },
-    rotateYByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.y = angle;
-    },
-    rotateZByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.z = angle;
-    },
-    rotateNegXByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.x = angle;
-    },
-    rotateNegYByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.y = angle;
-    },
-    rotateNegZByStep: (angle: number = 0.2) => {
-      if (groupRef.current) groupRef.current.rotation.z = angle;
-    },
     getRotation: () => {
       if (!groupRef.current) return { x: 0, y: 0, z: 0 };
       const { x, y, z } = groupRef.current.rotation;
@@ -67,6 +43,7 @@ function CameraController({ cameraPos }: { cameraPos: [number, number, number] }
 
   useEffect(() => {
     camera.position.set(...cameraPos);
+    camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
   }, [cameraPos, camera]);
 
@@ -74,7 +51,7 @@ function CameraController({ cameraPos }: { cameraPos: [number, number, number] }
 }
 
 export default function RubikCube() {
-  // ✅ Configs for all 27 cubes
+  // ✅ Configs for all 27 cubes (adjusted positions)
   const cubeConfigs = [
     { path: "./blender/rubiks_cube_1.glb", pos: [0, 0, 0] },
     { path: "./blender/rubiks_cube_2.glb", pos: [-3, 0, 0] },
@@ -105,33 +82,16 @@ export default function RubikCube() {
     { path: "./blender/rubiks_cube_27.glb", pos: [-3, -3, -3] },
   ];
 
-  // ✅ Store refs in a map
   const cubeRefs = useRef<Map<number, RubikModelRef>>(new Map());
   const groupRef = useRef<Group>(null);
 
-  // ✅ Store rotations in state
-  const [rotations, setRotations] = useState<{ [key: number]: { x: number; y: number; z: number } }>({});
-
   // ✅ Camera position state
-  const [cameraPos, setCameraPos] = useState<[number, number, number]>([0, 0, 0]);
+  const [cameraPos, setCameraPos] = useState<[number, number, number]>([10, 10, 10]);
 
-  // ✅ Input handler for cubes
-  const handleInputChange = (cubeIndex: number, axis: "x" | "y" | "z", value: string) => {
-    const angleDeg = Number(value) || 0;
-    const angleRad = (angleDeg * Math.PI) / 180;
+  // ✅ Whole cube rotation state
+  const [cubeRotation, setCubeRotation] = useState<[number, number, number]>([0, 0, 0]);
 
-    const ref = cubeRefs.current.get(cubeIndex);
-    if (ref) {
-      if (axis === "x") ref.rotateXByStep(angleRad);
-      if (axis === "y") ref.rotateYByStep(angleRad);
-      if (axis === "z") ref.rotateZByStep(angleRad);
-
-      const updated = ref.getRotation();
-      setRotations((prev) => ({ ...prev, [cubeIndex]: updated }));
-    }
-  };
-
-  // ✅ Input handler for camera
+  // ✅ Camera input handler
   const handleCameraChange = (axis: "x" | "y" | "z", value: string) => {
     const num = Number(value) || 0;
     setCameraPos((prev) => {
@@ -142,11 +102,17 @@ export default function RubikCube() {
     });
   };
 
-  // ✅ Rotate all cubes together
-  const rotateGroupY = () => {
-    if (groupRef.current) {
-      groupRef.current.rotation.x += Math.PI / 6;
-    }
+  // ✅ Cube rotation input handler
+  const handleCubeRotationChange = (axis: "x" | "y" | "z", value: string) => {
+    const angleDeg = Number(value) || 0;
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    setCubeRotation((prev) => {
+      if (axis === "x") return [angleRad, prev[1], prev[2]];
+      if (axis === "y") return [prev[0], angleRad, prev[2]];
+      if (axis === "z") return [prev[0], prev[1], angleRad];
+      return prev;
+    });
   };
 
   return (
@@ -175,19 +141,36 @@ export default function RubikCube() {
         <div>Current Camera: {JSON.stringify(cameraPos)}</div>
       </div>
 
-      <button
-        onClick={() => setCameraPos([0, 0, 0])}
-        style={{ marginBottom: "20px", padding: "8px 16px", cursor: "pointer" }}
-      >
-        Reset Camera
-      </button>
-
-      <button
-        onClick={rotateGroupY}
-        style={{ marginBottom: "20px", padding: "8px 16px", cursor: "pointer" }}
-      >
-        Rotate All Cubes Together (Group Y)
-      </button>
+      {/* 🎛 Whole Cube Rotation Controls */}
+      <div style={{ marginBottom: "20px" }}>
+        <h3>Whole Cube Rotation</h3>
+        <input
+          type="number"
+          placeholder="Rotate X°"
+          value={(cubeRotation[0] * 180) / Math.PI}
+          onChange={(e) => handleCubeRotationChange("x", e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Rotate Y°"
+          value={(cubeRotation[1] * 180) / Math.PI}
+          onChange={(e) => handleCubeRotationChange("y", e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Rotate Z°"
+          value={(cubeRotation[2] * 180) / Math.PI}
+          onChange={(e) => handleCubeRotationChange("z", e.target.value)}
+        />
+        <div>
+          Current:{" "}
+          {JSON.stringify({
+            x: (cubeRotation[0] * 180) / Math.PI,
+            y: (cubeRotation[1] * 180) / Math.PI,
+            z: (cubeRotation[2] * 180) / Math.PI,
+          })}
+        </div>
+      </div>
 
       <Canvas
         camera={{ position: cameraPos, fov: 50 }}
@@ -199,7 +182,8 @@ export default function RubikCube() {
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1.5} />
 
-        <group ref={groupRef}>
+        {/* ✅ No manual shift here, group stays at (0,0,0) */}
+        <group ref={groupRef} rotation={cubeRotation} position={[0, 0, 0]}>
           {cubeConfigs.map((cube, i) => (
             <ForwardedRubikModel
               key={i}
@@ -209,7 +193,12 @@ export default function RubikCube() {
               }}
               path={cube.path}
               scale={1.5}
-              position={cube.pos as [number, number, number]}
+              // shift positions by +3 so cube spans from -3 to +3
+              position={[
+                cube.pos[0] + 3,
+                cube.pos[1] + 3,
+                cube.pos[2] + 3,
+              ]}
             />
           ))}
         </group>
@@ -217,31 +206,6 @@ export default function RubikCube() {
         <OrbitControls enableZoom />
         <Environment preset="sunset" />
       </Canvas>
-
-      {/* Cube Controls */}
-      <div style={{ marginTop: "20px" }}>
-        {cubeConfigs.map((_, i) => (
-          <div key={i} style={{ marginBottom: "10px" }}>
-            <strong>Cube {i + 1}</strong>
-            <input
-              type="number"
-              placeholder="Rotate X°"
-              onChange={(e) => handleInputChange(i, "x", e.target.value)}
-            />
-            <input
-              type="number"
-              placeholder="Rotate Y°"
-              onChange={(e) => handleInputChange(i, "y", e.target.value)}
-            />
-            <input
-              type="number"
-              placeholder="Rotate Z°"
-              onChange={(e) => handleInputChange(i, "z", e.target.value)}
-            />
-            <div>Rotation: {JSON.stringify(rotations[i] || { x: 0, y: 0, z: 0 })}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
