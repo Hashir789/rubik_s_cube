@@ -91,6 +91,15 @@ export default function RubikCube() {
   // ✅ Whole cube rotation state
   const [cubeRotation, setCubeRotation] = useState<[number, number, number]>([0, 0, 0]);
 
+  // ✅ Front face rotation state
+  const [frontRotation, setFrontRotation] = useState(0);
+
+  // ✅ Front face indices (z = 0)
+  const frontFaceIndices = cubeConfigs
+    .map((c, i) => ({ ...c, i }))
+    .filter((c) => c.pos[2] === 0)
+    .map((c) => c.i);
+
   // ✅ Camera input handler
   const handleCameraChange = (axis: "x" | "y" | "z", value: string) => {
     const num = Number(value) || 0;
@@ -172,6 +181,18 @@ export default function RubikCube() {
         </div>
       </div>
 
+      {/* 🎛 Front Face Rotation Controls */}
+      <div style={{ marginBottom: "20px" }}>
+        <h3>Front Face Rotation</h3>
+        <input
+          type="number"
+          placeholder="Rotate Front Z°"
+          value={(frontRotation * 180) / Math.PI}
+          onChange={(e) => setFrontRotation((+e.target.value * Math.PI) / 180)}
+        />
+        <div>Front Rotation: {(frontRotation * 180) / Math.PI}°</div>
+      </div>
+
       <Canvas
         camera={{ position: cameraPos, fov: 50 }}
         style={{ width: "30vh", height: "30vh", background: "#242424" }}
@@ -182,25 +203,39 @@ export default function RubikCube() {
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={1.5} />
 
-        {/* ✅ No manual shift here, group stays at (0,0,0) */}
+        {/* ✅ Whole cube group */}
         <group ref={groupRef} rotation={cubeRotation} position={[0, 0, 0]}>
-          {cubeConfigs.map((cube, i) => (
-            <ForwardedRubikModel
-              key={i}
-              ref={(ref) => {
-                if (ref) cubeRefs.current.set(i, ref);
-                else cubeRefs.current.delete(i);
-              }}
-              path={cube.path}
-              scale={1.5}
-              // shift positions by +3 so cube spans from -3 to +3
-              position={[
-                cube.pos[0] + 3,
-                cube.pos[1] + 3,
-                cube.pos[2] + 3,
-              ]}
-            />
-          ))}
+          {/* Normal cubes (not in front face) */}
+          {cubeConfigs.map((cube, i) => {
+            if (frontFaceIndices.includes(i)) return null;
+            return (
+              <ForwardedRubikModel
+                key={i}
+                ref={(ref) => {
+                  if (ref) cubeRefs.current.set(i, ref);
+                  else cubeRefs.current.delete(i);
+                }}
+                path={cube.path}
+                scale={1.5}
+                position={[cube.pos[0] + 3, cube.pos[1] + 3, cube.pos[2] + 3]}
+              />
+            );
+          })}
+
+          {/* Front face group */}
+          <group rotation={[0, 0, frontRotation]}>
+            {cubeConfigs.map((cube, i) => {
+              if (!frontFaceIndices.includes(i)) return null;
+              return (
+                <ForwardedRubikModel
+                  key={i}
+                  path={cube.path}
+                  scale={1.5}
+                  position={[cube.pos[0] + 3, cube.pos[1] + 3, cube.pos[2] + 3]}
+                />
+              );
+            })}
+          </group>
         </group>
 
         <OrbitControls enableZoom />
