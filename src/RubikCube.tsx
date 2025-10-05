@@ -105,12 +105,13 @@ export default function RubikCube() {
     };
   }, [isLoaded, manualMode, counts]);
 
-  // Handle keypresses for face rotations and mode toggle
+  // Handle keypresses for face rotations, mode toggle, and full cube rotation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isLoaded) return;
 
       const key = event.key.toLowerCase();
+      const isCounterClockwise = event.shiftKey;
 
       // Toggle manual mode with 'P'
       if (key === "p") {
@@ -121,10 +122,20 @@ export default function RubikCube() {
         return;
       }
 
-      // Only process face rotations in manual mode
+      // Only process rotations in manual mode
       if (!manualMode) return;
 
-      const isCounterClockwise = event.shiftKey;
+      // Handle full cube rotations with 'M' (Z-axis) and 'N' (X-axis)
+      if (key === "m") {
+        rotateFullCube("z", !isCounterClockwise);
+        return;
+      }
+      if (key === "n") {
+        rotateFullCube("y", !isCounterClockwise);
+        return;
+      }
+
+      // Handle face rotations
       const keyToFace: { [key: string]: Face } = {
         f: "front",
         u: "up",
@@ -144,7 +155,7 @@ export default function RubikCube() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isLoaded, manualMode]);
 
-  // Animation for rotating faces
+  // Animation for rotating faces or full cube
   const { angle } = useSpring({
     angle: turns * (Math.PI / 2),
     config: { tension: 120, friction: 14, clamp: true },
@@ -229,6 +240,35 @@ export default function RubikCube() {
     selectFace(axis[0] ? "x" : axis[1] ? "y" : "z", faceValue);
     setTurns((t) => t + (clockwise ? 1 : -1));
   };
+
+  // Rotate the entire cube around the specified axis
+  const rotateFullCube = (axis: "y" | "z", clockwise: boolean = true) => {
+    console.log({ action: "fullCubeRotation", axis, clockwise });
+  
+    // Ensure cube and groups exist, and not already rotating
+    if (!masterGroup.current || rotatingGroup.current.children.length > 0) return;
+  
+    // ✅ Move all children from masterGroup to rotatingGroup for smooth rotation
+    const children = [...masterGroup.current.children];
+    children.forEach((child) => rotatingGroup.current.add(child));
+  
+    // ✅ Add rotatingGroup back under masterGroup *only once*
+    if (!masterGroup.current.children.includes(rotatingGroup.current)) {
+      masterGroup.current.add(rotatingGroup.current);
+    }
+  
+    // ✅ Correct axis setup
+    // - Y-axis → left/right spin
+    // - Z-axis → front/back spin
+    // Note: rotationAxis expects a normalized vector direction
+    const rotationAxis: [number, number, number] =
+      axis === "y"
+        ? [0, 1, 0] // Y-axis rotation
+        : [0, 0, 1]; // Z-axis rotation
+  
+    setRotationAxis(rotationAxis);
+    setTurns((t) => t + (clockwise ? 1 : -1));
+  };  
 
   // Cube configuration for all 27 cubies
   const cubeConfigs = [
